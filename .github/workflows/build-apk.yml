@@ -35,11 +35,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-buildozer-v2-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-buildozer-v3-${{ hashFiles('buildozer.spec', 'pip-constraints.txt') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-v2-
+            ${{ runner.os }}-buildozer-v3-
 
       - name: Compilar APK debug con Buildozer
+        env:
+          PIP_CONSTRAINT: ${{ github.workspace }}/pip-constraints.txt
         run: |
           buildozer android debug
 
