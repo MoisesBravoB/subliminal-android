@@ -173,6 +173,7 @@ class SubliminalAndroidApp(App):
         self._desktop_flash_ev = None
         self._desktop_hide_ev = None
         self._active_tab = 0
+        self._service_started = False
 
         self.root_float = FloatLayout()
         main_col = BoxLayout(orientation="vertical")
@@ -256,8 +257,7 @@ class SubliminalAndroidApp(App):
         if is_android():
             request_notification_permission()
             Clock.schedule_interval(lambda dt: self._check_android_permission(), 2.0)
-            if self.cfg.get("enabled", True) and has_overlay_permission():
-                start_background_service(self.user_data_dir)
+            self._check_android_permission()
         else:
             self._schedule_desktop_flash()
 
@@ -837,6 +837,8 @@ class SubliminalAndroidApp(App):
         if has_overlay_permission():
             self.perm_banner.height = dp(0)
             self.perm_banner.opacity = 0
+            if self.cfg.get("enabled", True) and not self._service_started:
+                self._service_started = start_background_service(self.user_data_dir)
         else:
             self.perm_banner.height = dp(48)
             self.perm_banner.opacity = 1
@@ -1044,9 +1046,10 @@ class SubliminalAndroidApp(App):
         self._save()
         if is_android():
             if self.cfg["enabled"]:
-                start_background_service(self.user_data_dir)
+                self._service_started = start_background_service(self.user_data_dir)
             else:
                 stop_background_service()
+                self._service_started = False
 
     def _get_effective_pool_and_cfg(self):
         sess = get_active_session(self.cfg)

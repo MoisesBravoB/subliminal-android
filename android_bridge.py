@@ -5,6 +5,10 @@ from typing import Any
 
 from kivy.utils import platform
 
+# Mantiene referencias fuertes a los Runnables para que Python no los libere antes de ejecutarse en Java
+_ACTIVE_RUNNABLES: set = set()
+LAST_OVERLAY_ERROR: str = ""
+
 
 def is_android() -> bool:
     return platform == "android"
@@ -109,7 +113,6 @@ def _hex_to_argb_int(hex_color: str, alpha_0_255: int = 255) -> int:
     else:
         r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
     val = ((alpha_0_255 & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF)
-    # Signed 32-bit int for Java Color
     if val >= 0x80000000:
         val -= 0x100000000
     return val
@@ -117,10 +120,14 @@ def _hex_to_argb_int(hex_color: str, alpha_0_255: int = 255) -> int:
 
 def show_android_overlay(text: str, cfg: dict[str, Any]) -> bool:
     """Muestra un TextView flotante nativo sobre cualquier app sin bloquear toques."""
-    if not is_android() or not text or not has_overlay_permission():
+    global LAST_OVERLAY_ERROR
+    if not is_android() or not text:
+        return False
+    if not has_overlay_permission():
+        LAST_OVERLAY_ERROR = "Sin permiso de superposición"
         return False
     try:
-        from jnius import PythonJavaClass, autoclass, java_method
+        from jnius import PythonJavaClass, autoclass, cast, java_method
 
         Context = autoclass("android.content.Context")
         WindowManagerLayoutParams = autoclass("android.view.WindowManager$LayoutParams")
@@ -133,9 +140,11 @@ def show_android_overlay(text: str, cfg: dict[str, Any]) -> bool:
         BuildVersion = autoclass("android.os.Build$VERSION")
         Handler = autoclass("android.os.Handler")
         Looper = autoclass("android.os.Looper")
+        JString = autoclass("java.lang.String")
 
         ctx = _get_context()
-        wm = ctx.getSystemService(Context.WINDOW_SERVICE)
+        raw_wm = ctx.getSystemService(Context.WINDOW_SERVICE)
+        wm = cast("android.view.WindowManager", raw_wm)
         handler = Handler(Looper.getMainLooper())
 
         duration_ms = max(5, int(cfg.get("duration_ms", 35)))
@@ -159,16 +168,22 @@ def show_android_overlay(text: str, cfg: dict[str, Any]) -> bool:
                 try:
                     self._wm.removeViewImmediate(self._view)
                 except Exception:
-                    pass
+                    try:
+                        self._wm.removeView(self._view)
+                    except Exception:
+                        pass
+                finally:
+                    _ACTIVE_RUNNABLES.discard(self)
 
         class ShowRunnable(PythonJavaClass):
             __javainterfaces__ = ["java/lang/Runnable"]
 
             @java_method("()V")
             def run(self):
+                global LAST_OVERLAY_ERROR
                 try:
                     tv = TextView(ctx)
-                    tv.setText(text)
+                    tv.setText(cast("java.lang.CharSequence", JString(text)))
                     tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, float(font_size))
                     tv.setTextColor(_hex_to_argb_int(text_color, 255))
                     tv.setGravity(Gravity.CENTER)
@@ -225,11 +240,18 @@ def show_android_overlay(text: str, cfg: dict[str, Any]) -> bool:
 
                     wm.addView(tv, params)
                     remover = RemoveRunnable(wm, tv)
+                    _ACTIVE_RUNNABLES.add(remover)
                     handler.postDelayed(remover, duration_ms)
-                except Exception:
-                    pass
+                    LAST_OVERLAY_ERROR = ""
+                except Exception as exc:
+                    LAST_OVERLAY_ERROR = str(exc)
+                finally:
+                    _ACTIVE_RUNNABLES.discard(self)
 
-        handler.post(ShowRunnable())
+        shower = ShowRunnable()
+        _ACTIVE_RUNNABLES.add(shower)
+        handler.post(shower)
         return True
-    except Exception:
+    except Exception as exc:
+        LAST_OVERLAY_ERROR = str(exc)
         return False
