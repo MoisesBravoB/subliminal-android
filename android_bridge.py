@@ -85,10 +85,40 @@ def start_background_service(data_dir: str) -> bool:
         PythonActivity = autoclass("org.kivy.android.PythonActivity")
         activity = PythonActivity.mActivity
         service = autoclass("org.subliminal.subliminalflash.ServiceSubliminal")
-        service.start(activity, data_dir)
-        return True
+        # En python-for-android con :foreground, start() acepta 5 args (notificación persistente)
+        try:
+            service.start(
+                activity,
+                "",
+                "Subliminal Flash",
+                "Activo en segundo plano",
+                str(data_dir),
+            )
+            return True
+        except Exception:
+            service.start(activity, str(data_dir))
+            return True
     except Exception:
         return False
+
+
+def request_ignore_battery_optimizations() -> None:
+    if not is_android():
+        return
+    try:
+        from jnius import autoclass
+
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        Settings = autoclass("android.provider.Settings")
+        Intent = autoclass("android.content.Intent")
+        Uri = autoclass("android.net.Uri")
+
+        activity = PythonActivity.mActivity
+        uri = Uri.parse("package:" + activity.getPackageName())
+        intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, uri)
+        activity.startActivity(intent)
+    except Exception:
+        pass
 
 
 def stop_background_service() -> bool:

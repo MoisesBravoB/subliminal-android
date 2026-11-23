@@ -6,7 +6,6 @@ import random
 import sys
 import time
 
-# Asegurar que el directorio raíz del proyecto esté en sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -16,7 +15,35 @@ from catalog import CUSTOM_CATEGORY_KEY, get_category_messages
 from config_store import get_active_session, load_config
 
 
+def _configure_sticky_service() -> None:
+    """Configura START_STICKY para que Android mantenga/reinicie el servicio al cerrar la UI."""
+    try:
+        from jnius import autoclass
+
+        PythonService = autoclass("org.kivy.android.PythonService")
+        if PythonService.mService is not None:
+            PythonService.mService.setAutoRestartService(True)
+    except Exception:
+        pass
+
+
+def _is_screen_on() -> bool:
+    try:
+        from jnius import autoclass, cast
+
+        Context = autoclass("android.content.Context")
+        PythonService = autoclass("org.kivy.android.PythonService")
+        svc = PythonService.mService
+        if svc is None:
+            return True
+        pm = cast("android.os.PowerManager", svc.getSystemService(Context.POWER_SERVICE))
+        return bool(pm.isInteractive())
+    except Exception:
+        return True
+
+
 def run_service() -> None:
+    _configure_sticky_service()
     data_dir = os.environ.get("PYTHON_SERVICE_ARGUMENT") or None
     seq_index = 0
 
@@ -24,6 +51,10 @@ def run_service() -> None:
         cfg = load_config(data_dir)
         if not cfg.get("enabled", True):
             time.sleep(2.0)
+            continue
+
+        if not _is_screen_on():
+            time.sleep(3.0)
             continue
 
         active_sess = get_active_session(cfg)

@@ -20,6 +20,7 @@ from kivy.utils import get_color_from_hex
 from android_bridge import (
     has_overlay_permission,
     is_android,
+    request_ignore_battery_optimizations,
     request_notification_permission,
     request_overlay_permission,
     show_android_overlay,
@@ -562,6 +563,31 @@ class SubliminalAndroidApp(App):
         self.msg_list_col.bind(minimum_height=self.msg_list_col.setter("height"))
         msg_card.add_widget(self.msg_list_col)
         col.add_widget(msg_card)
+
+        # --- Card 5: Segundo plano / Batería (Android) ---
+        bg_card = make_section_card("SEGUNDO PLANO (ANDROID)")
+        bg_info = Label(
+            text="Para que Xiaomi/Android no cierre los destellos al salir de la app, desactiva la restricción de batería:",
+            color=C_MUTED,
+            font_size=sp(11),
+            size_hint_y=None,
+            height=dp(34),
+            halign="left",
+            valign="middle",
+        )
+        bg_info.bind(size=bg_info.setter("text_size"))
+        bg_card.add_widget(bg_info)
+        btn_bat = FlatButton(
+            text="Permitir segundo plano sin restricciones",
+            bg_color=C_BTN_DARK,
+            fg_color=C_ON_DARK,
+            font_size=sp(12),
+            size_hint_y=None,
+            height=dp(38),
+        )
+        btn_bat.bind(on_release=lambda *_: request_ignore_battery_optimizations())
+        bg_card.add_widget(btn_bat)
+        col.add_widget(bg_card)
 
         sv.add_widget(col)
         return sv

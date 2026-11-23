@@ -17,7 +17,7 @@ fullscreen = 0
 services = Subliminal:service/main.py:foreground
 
 # Permisos Android
-android.permissions = SYSTEM_ALERT_WINDOW,FOREGROUND_SERVICE,POST_NOTIFICATIONS,WAKE_LOCK
+android.permissions = SYSTEM_ALERT_WINDOW,FOREGROUND_SERVICE,POST_NOTIFICATIONS,WAKE_LOCK,REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
 android.api = 33
 android.minapi = 24
 android.ndk = 25b
