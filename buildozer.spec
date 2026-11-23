@@ -7,7 +7,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.exclude_dirs = .venv,venv,.git,.github,bin,.buildozer,__pycache__
 version = 1.2.0
 
-requirements = python3,kivy==2.3.1,pyjnius
+requirements = python3,kivy==2.3.1,pyjnius,charset-normalizer==3.3.2
 
 icon.filename = %(source.dir)s/assets/icon.png
 orientation = portrait
