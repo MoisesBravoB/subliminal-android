@@ -37,13 +37,15 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install buildozer cython==0.29.36
 
-      - name: Cache de .buildozer
+      - name: Cache de Buildozer y Android SDK
         uses: actions/cache@v4
         with:
-          path: .buildozer
-          key: ${{ runner.os }}-buildozer-v3-${{ hashFiles('buildozer.spec', 'pip-constraints.txt') }}
+          path: |
+            .buildozer
+            ~/.buildozer
+          key: ${{ runner.os }}-buildozer-v4-${{ hashFiles('buildozer.spec', 'pip-constraints.txt') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-v3-
+            ${{ runner.os }}-buildozer-v4-
 
       - name: Compilar APK debug con Buildozer
         env:
